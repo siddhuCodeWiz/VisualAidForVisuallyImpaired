@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'package:video_player/video_player.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
-String ipAddress = '192.168.0.102';
+String ipAddress = '192.168.0.103';
 
 bool _isUploading = false;
 

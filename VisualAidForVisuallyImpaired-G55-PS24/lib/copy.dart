@@ -7,16 +7,15 @@ import 'package:camera/camera.dart';
 import 'package:video_player/video_player.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' show join;
-// import './video_processing_page.dart';
+import './video_processing_page.dart';
 import './loading_conversations.dart';
-import './live_captioning.dart';
 import './chatbot.dart';
 // import 'package:audioplayers/audioplayers.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:convert';
 
-String ipAddress = '192.168.0.103';
+String ipAddress = '10.10.180.28';
 
 void main() {
   runApp(MyApp());
@@ -31,10 +30,62 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: VolunteerScreen(),
+      home: LoginScreen(), // Start with the Login screen
     );
   }
 }
+
+class LoginScreen extends StatelessWidget {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Login'),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            TextField(
+              controller: _nameController,
+              decoration: InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _passwordController,
+              decoration: InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                String name = _nameController.text;
+                String password = _passwordController.text;
+
+                // Simple validation and login simulation
+                if (name == 'user' && password == 'password') {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => VolunteerScreen()),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Invalid credentials')),
+                  );
+                }
+              },
+              child: Text('Login'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 
 class VolunteerScreen extends StatelessWidget {
   @override
@@ -93,7 +144,7 @@ class VolunteerScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+  );
   }
 }
 
@@ -252,18 +303,18 @@ class VisualAssistancePage extends StatelessWidget {
           Expanded(
             child: InkWell(
               onTap: () {
-                _speak("Entered live captioning page");
+                _speak("Entered video description page");
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => LiveCaptionApp()),
+                      builder: (context) => VideoProcessingPage()),
                 );
               },
               child: Container(
                 color: Colors.lightBlue.shade500,
                 child: Center(
                   child: Text(
-                    'Live Video Description',
+                    'Video Description',
                     style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -476,6 +527,7 @@ class _ImageUploadScreenState extends State<ImageUploadScreen> {
         'http://$ipAddress:5002/generate_lang'; // Second API endpoint for language generation
 
     var dis_url = 'http://$ipAddress:5005/estimate_distance';
+
     var upload_user_image = 'http://$ipAddress:5000/upload';
 
     var dis_req = http.MultipartRequest('POST', Uri.parse(dis_url));

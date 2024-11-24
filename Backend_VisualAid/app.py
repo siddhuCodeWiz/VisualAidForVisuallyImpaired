@@ -145,12 +145,116 @@
 
 from flask import Flask, request, jsonify
 import requests
+from pymongo import MongoClient
+import cloudinary.uploader
+from werkzeug.utils import secure_filename
+from config import Config
+from werkzeug.security import generate_password_hash, check_password_hash
+from bson.objectid import ObjectId
+import bcrypt
+
+class Config:
+    CLOUDINARY_CLOUD_NAME = "dqooyg7dd"
+    CLOUDINARY_API_KEY = '588936173388657'
+    CLOUDINARY_API_SECRET = 'xqiHDl11F66V9YYg5AUheuclSmw'
+
+    MONGODB_URI = 'mongodb://localhost:27017'  
+
+cloudinary.config(
+    cloud_name=Config.CLOUDINARY_CLOUD_NAME,
+    api_key=Config.CLOUDINARY_API_KEY,
+    api_secret=Config.CLOUDINARY_API_SECRET
+)
+
+# MongoDB Connection
+client = MongoClient(Config.MONGODB_URI)
+db = client['visualaid']
+history_collection = db['images']
+users_collection = db['users']
 
 app = Flask(__name__)
 
 API_URL = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large"
 HEADERS = {"Authorization": "Bearer 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"}
 
+
+# @app.route('/register', methods=['POST'])
+# def register():
+#     data = request.json
+#     name = data.get('name')
+#     password = data.get('password')
+
+#     # Check if user already exists
+#     if users_collection.find_one({'name': name}):
+#         return jsonify({"error": "User already exists"}), 400
+
+#     # Hash the password and store user data
+#     hashed_password = generate_password_hash(password)
+#     users_collection.insert_one({'name': name, 'password': hashed_password})
+#     return jsonify({"message": "User registered successfully!"}), 201
+
+
+
+# @app.route('/login', methods=['POST'])
+# def login():
+#     data = request.json
+#     name = data.get('name')
+#     password = data.get('password')
+
+#     user = users_collection.find_one({'name': name})
+
+#     # Validate user credentials
+#     if user and check_password_hash(user['password'], password):
+#         return jsonify({"message": "Login successful!"}), 200
+#     else:
+#         return jsonify({"error": "Invalid name or password"}), 401
+
+
+
+@app.route('/upload', methods=['POST'])
+def upload_image():
+    print("entered upload")
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+    caption = request.form.get('caption')
+    
+    if not file or not caption:
+        return jsonify({'error': 'File or caption missing'}), 400
+    
+    # Upload the file to Cloudinary
+    filename = secure_filename(file.filename)
+    
+    try:
+        cloudinary_response = cloudinary.uploader.upload(file)
+        image_url = cloudinary_response['secure_url']
+        
+        # Store image URL and caption in MongoDB
+        history_item = {
+            'image_url': image_url,
+            'caption': caption
+        }
+        
+        history_collection.insert_one(history_item)
+        
+        return jsonify({'message': 'Image and caption uploaded successfully', 'image_url': image_url, 'caption': caption}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Endpoint to Get All Uploaded Images and Captions (History)
+@app.route('/history', methods=['GET'])
+def get_history():
+    history_items = history_collection.find()
+    
+    history_list = []
+    for item in history_items:
+        history_list.append({
+            'image_url': item['image_url'],
+            'caption': item['caption']
+        })
+    
+    return jsonify(history_list), 200
 
 
 
@@ -176,6 +280,31 @@ def get_image_caption():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
+
+    
+
+@app.route('/updateresponse', methods=['POST'])
+def update_response():
+    data = request.json
+    document_id = data.get('id')  # The document's ID
+    corrected_caption = data.get('corrected_caption')  # New caption to add
+
+    if not document_id or not corrected_caption:
+        return jsonify({"error": "Invalid data"}), 400
+
+    # Add the `corrected_caption` field with `update_one`
+    result = history_collection.update_one(
+        {"_id": ObjectId(document_id)},    # Filter by document ID
+        {"$set": {"corrected_caption": corrected_caption}}  # Add or update `corrected_caption` field
+    )
+
+    if result.modified_count > 0:
+        return jsonify({"message": "Field added successfully"}), 200
+    else:
+        return jsonify({"error": "No document found or update failed"}), 404
+
     
 
 if __name__ == '__main__':

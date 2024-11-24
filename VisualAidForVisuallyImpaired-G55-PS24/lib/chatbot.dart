@@ -25,7 +25,7 @@ class _ChatBotAppState extends State<ChatBotApp> {
 
   Future<void> _getResponse(String query) async {
     final response = await http.post(
-      Uri.parse('http://172.168.11.78:5007/chat'),
+      Uri.parse('http://192.168.0.103:5007/chat'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"query": query}),
     );
